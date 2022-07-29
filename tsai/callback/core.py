@@ -111,7 +111,7 @@ class ShowGraph(Callback):
         if x_bounds is not None: self.graph_ax.set_xlim(*x_bounds)
         if y_bounds is not None: self.graph_ax.set_ylim(*y_bounds)
         self.graph_ax.set_title(f'Losses\nepoch: {self.epoch +1}/{self.n_epoch}')
-        self.graph_out.update(self.graph_ax.figure)
+        # self.graph_out.update(self.graph_ax.figure)
 
 ShowGraphCallback2 = ShowGraph
 
