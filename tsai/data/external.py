@@ -2418,7 +2418,7 @@ def get_forecasting_time_series(dsid, path='./data/forecasting/', force_download
     dsid_list = [fd for fd in forecasting_time_series if fd.lower() == dsid.lower()]
     assert len(dsid_list) > 0, f'{dsid} is not a forecasting dataset'
     dsid = dsid_list[0]
-    if dsid == 'Weather': full_tgt_dir = Path(path)/f'{dsid}.csv.zip'
+    if dsid == 'Weather': full_tgt_dir = Path(path)/f'jena_climate_2009_2016.csv'
     else: full_tgt_dir = Path(path)/f'{dsid}.csv'
     pv(f'Dataset: {dsid}', verbose)
     if dsid == 'Sunspots': url = "https://storage.googleapis.com/laurencemoroney-blog.appspot.com/Sunspots.csv"
@@ -2441,7 +2441,10 @@ def get_forecasting_time_series(dsid, path='./data/forecasting/', force_download
             df = pd.read_csv(full_tgt_dir)
             df = df[5::6] # slice [start:stop:step], starting from index 5 take every 6th record.
 
+            print(df.shape, df.columns)
+
             date_time = pd.to_datetime(df.pop('Date Time'), format='%d.%m.%Y %H:%M:%S')
+            print(date_time.shape)
 
             # remove error (negative wind)
             wv = df['wv (m/s)']
@@ -2466,14 +2469,14 @@ def get_forecasting_time_series(dsid, path='./data/forecasting/', force_download
             df['max Wx'] = max_wv*np.cos(wd_rad)
             df['max Wy'] = max_wv*np.sin(wd_rad)
 
-            timestamp_s = date_time.map(datetime.timestamp)
-            day = 24*60*60
-            year = (365.2425)*day
+            # timestamp_s = date_time.map(datetime.timestamp)
+            # day = 24*60*60
+            # year = (365.2425)*day
 
-            df['Day sin'] = np.sin(timestamp_s * (2 * np.pi / day))
-            df['Day cos'] = np.cos(timestamp_s * (2 * np.pi / day))
-            df['Year sin'] = np.sin(timestamp_s * (2 * np.pi / year))
-            df['Year cos'] = np.cos(timestamp_s * (2 * np.pi / year))
+            # df['Day sin'] = np.sin(timestamp_s * (2 * np.pi / day))
+            # df['Day cos'] = np.cos(timestamp_s * (2 * np.pi / day))
+            # df['Year sin'] = np.sin(timestamp_s * (2 * np.pi / year))
+            # df['Year cos'] = np.cos(timestamp_s * (2 * np.pi / year))
             df.reset_index(drop=True, inplace=True)
             return df
         else:

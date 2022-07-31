@@ -1,6 +1,12 @@
 from tsai.all import *
-ts = get_forecasting_time_series("Sunspots").values
+ts = get_forecasting_time_series("Weather").values
+
+print(ts.shape)
+
 X, y = SlidingWindow(60, horizon=3)(ts)
+
+print(X.shape, y.shape)
+
 splits = TimeSplitter(235)(y) 
 batch_tfms = TSStandardize()
 fcst = TSForecaster(X, y, splits=splits, path='models', batch_tfms=batch_tfms, bs=512, arch=TSTPlus, metrics=mae, cbs=ShowGraph())
