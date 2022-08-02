@@ -169,3 +169,6 @@ pythonenv*/
 *.tgz
 token
 tutorial_nbs/models
+wandb
+models
+ash-numbers

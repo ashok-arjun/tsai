@@ -2424,6 +2424,7 @@ def get_forecasting_time_series(dsid, path='./data/forecasting/', force_download
     if dsid == 'Sunspots': url = "https://storage.googleapis.com/laurencemoroney-blog.appspot.com/Sunspots.csv"
     elif dsid == 'Weather': url = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip'
 
+    print("About to try...")
     try:
         pv("downloading data...", verbose)
         if force_download:
