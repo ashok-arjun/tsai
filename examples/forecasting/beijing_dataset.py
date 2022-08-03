@@ -17,11 +17,18 @@ import os
 METHOD_HYPERPARAM_MAP = {
         'rocket': {'model': MiniRocket, 
                 'arch_args': {
-                                'num_features': [10000, 20000],
-                                'max_dilations_per_kernel': [16, 32, 64, 128]      
+                                'num_features': [10000],
+                                'max_dilations_per_kernel': [16, 32, 64]      
                         }
                 },
         'transformer': {'model': TransformerModel, 
+                'arch_args': {
+                                'd_model': [64, 128, 256, 512],
+                                'n_head': [1, 2, 4, 8, 16],
+                                'n_layers': [1,2,3,4,5]      
+                        }
+                },
+        'tstplus': {'model': TSTPlus, 
                 'arch_args': {
                                 'd_model': [64, 128, 256, 512],
                                 'n_head': [1, 2, 4, 8, 16],
@@ -33,8 +40,8 @@ METHOD_HYPERPARAM_MAP = {
                                 'hidden_size': [64, 128, 256, 512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
-                                'rnn_dropout': [0, 0.3, 0.5],
-                                'fc_dropout': [0, 0.3, 0.5]
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5]
                         }
                 },
         'lstm': {'model': LSTM, 
@@ -42,8 +49,26 @@ METHOD_HYPERPARAM_MAP = {
                                 'hidden_size': [64, 128, 256, 512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
-                                'rnn_dropout': [0, 0.3, 0.5],
-                                'fc_dropout': [0, 0.3, 0.5]
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5]
+                        }
+                },
+        'rnnplus': {'model': RNNPlus, 
+                'arch_args': {
+                                'hidden_size': [64, 128, 256, 512],
+                                'n_layers': [1,2,3,4,5],
+                                'bidirectional': [True, False],
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5]
+                        }
+                },
+        'lstmplus': {'model': LSTMPlus, 
+                'arch_args': {
+                                'hidden_size': [64, 128, 256, 512],
+                                'n_layers': [1,2,3,4,5],
+                                'bidirectional': [True, False],
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5]
                         }
                 },
         'rnn_fcn': {'model': RNN_FCN, 
@@ -51,17 +76,35 @@ METHOD_HYPERPARAM_MAP = {
                                 'hidden_size': [64, 128, 256, 512],
                                 'rnn_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
-                                'rnn_dropout': [0, 0.3, 0.5],
-                                'fc_dropout': [0, 0.3, 0.5],
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5],
+                                'conv_layers': [[128, 256, 128], [128, 256, 512]],
+                                'kss': [[7, 5, 3]]
+                        }
+                },
+        'rnn_fcnplus': {'model': RNN_FCNPlus, 
+                'arch_args': {
+                                'hidden_size': [64, 128, 256, 512],
+                                'rnn_layers': [1,2,3,4,5],
+                                'bidirectional': [True, False],
+                                # 'rnn_dropout': [0, 0.3, 0.5],
+                                # 'fc_dropout': [0, 0.3, 0.5],
                                 'conv_layers': [[128, 256, 128], [128, 256, 512]],
                                 'kss': [[7, 5, 3]]
                         }
                 },
         'resnet': {'model': ResNet, 'arch_args': {}},
+        'resnetplus': {'model': ResNetPlus, 'arch_args': {}},
+        'inceptiontime': {'model': InceptionTime, 'arch_args': {}},
+        'inceptiontimeplus': {'model': InceptionTimePlus, 'arch_args': {}},
         'xresnet1d18': {'model': xresnet1d18, 'arch_args': {}},
         'xresnet1d18_deep': {'model': xresnet1d18_deep, 'arch_args': {}},
         'xresnet1d34': {'model': xresnet1d34, 'arch_args': {}},
-        'xresnet1d34_deep': {'model': xresnet1d34_deep, 'arch_args': {}}
+        'xresnet1d34_deep': {'model': xresnet1d34_deep, 'arch_args': {}},
+        'xresnet1d18plus': {'model': xresnet1d18plus, 'arch_args': {}},
+        'xresnet1d18_deepplus': {'model': xresnet1d18_deepplus, 'arch_args': {}},
+        'xresnet1d34plus': {'model': xresnet1d34plus, 'arch_args': {}},
+        'xresnet1d34_deepplus': {'model': xresnet1d34_deepplus, 'arch_args': {}}
 }
 
 if __name__ == "__main__":        
@@ -145,7 +188,11 @@ if __name__ == "__main__":
                 ts = df.values
                 print("Shape of DF:", ts.shape)
 
-                X, y = SlidingWindow(24, get_x=list(range(12)), get_y=[12], horizon=0)(ts)
+                if args.task == 'regression':
+                        horizon = 0
+                elif args.task == 'forecasting':
+                        horizon = 24
+                X, y = SlidingWindow(24, get_x=list(range(12)), get_y=[12], horizon=horizon)(ts)
                 train_split = list(range(int(train_slice_start*len(X)), int(train_slice_end*len(X))))
                 valid_split = list(range(int(train_slice_end*len(X)), int(valid_slice_end*len(X))))
                 test_split = list(range(int(valid_slice_end*len(X)), int(len(X))))
@@ -166,14 +213,17 @@ if __name__ == "__main__":
                 earlyStoppingCallback = EarlyStoppingCallback(monitor='valid_loss', patience=EARLY_STOPPING_PATIENCE)
                 loss_func = MSELossFlat()
 
-                
-                tfms  = [None, [TSRegression()]]
+                if args.task == 'regression':
+                        tfms  = [None, [TSRegression()]]
+                elif args.task == 'forecasting':
+                        tfms  = [None, [TSForecasting()]]
+
                 dsets = TSDatasets(X, y, tfms=tfms, splits=splits)
                 dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[BATCH_SIZE, BATCH_SIZE], \
                                                 num_workers=NUM_WORKERS, device='cuda:0', batch_tfms=batch_tfms)
                 model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
                 print(model.__class__.__name__)
-                reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func)
+                reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
                 lr_max = reg.lr_find().valley
                 print("Found learning rate:", lr_max)  
                 reg.fit_one_cycle(NUM_EPOCHS, lr_max, cbs=[saveModelCallback, earlyStoppingCallback])
