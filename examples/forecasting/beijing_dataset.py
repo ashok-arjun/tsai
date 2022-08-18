@@ -23,21 +23,22 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'transformer': {'model': TransformerModel, 
                 'arch_args': {
-                                'd_model': [64, 128, 256, 512],
+                                'd_model': [512],
                                 'n_head': [1, 2, 4, 8, 16],
                                 'n_layers': [1,2,3,4,5]      
                         }
                 },
         'tstplus': {'model': TSTPlus, 
                 'arch_args': {
-                                'd_model': [64, 128, 256, 512],
+                                'd_model': [512],
                                 'n_head': [1, 2, 4, 8, 16],
-                                'n_layers': [1,2,3,4,5]      
+                                'n_layers': [1,2,3,4,5],
+                                'max_seq_len': [201]      
                         }
                 },
         'rnn': {'model': RNN, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
@@ -46,7 +47,7 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'lstm': {'model': LSTM, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
@@ -55,7 +56,7 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'rnnplus': {'model': RNNPlus, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
@@ -64,7 +65,7 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'lstmplus': {'model': LSTMPlus, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'n_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
@@ -73,23 +74,23 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'rnn_fcn': {'model': RNN_FCN, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'rnn_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5],
-                                'conv_layers': [[128, 256, 128], [128, 256, 512]],
+                                'conv_layers': [[128, 256, 512]],
                                 'kss': [[7, 5, 3]]
                         }
                 },
         'rnn_fcnplus': {'model': RNN_FCNPlus, 
                 'arch_args': {
-                                'hidden_size': [64, 128, 256, 512],
+                                'hidden_size': [512],
                                 'rnn_layers': [1,2,3,4,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5],
-                                'conv_layers': [[128, 256, 128], [128, 256, 512]],
+                                'conv_layers': [[128, 256, 512]],
                                 'kss': [[7, 5, 3]]
                         }
                 },
@@ -123,6 +124,7 @@ if __name__ == "__main__":
         parser.add_argument('--train_slice_start', type=float, default=0., help='device ids of multile gpus')
         parser.add_argument('--train_slice_end', type=float, default=0.6, help='device ids of multile gpus')
         parser.add_argument('--valid_slice_end', type=float, default=0.8, help='device ids of multile gpus')
+        parser.add_argument('--lr', type=float, default=0.001, help='lr')
 
         args = parser.parse_args()
         METHOD = args.method
@@ -192,7 +194,7 @@ if __name__ == "__main__":
                         horizon = 0
                 elif args.task == 'forecasting':
                         horizon = 24
-                X, y = SlidingWindow(24, get_x=list(range(12)), get_y=[12], horizon=horizon)(ts)
+                X, y = SlidingWindow(1, get_x=list(range(15)), get_y=[15], horizon=horizon)(ts)
                 train_split = list(range(int(train_slice_start*len(X)), int(train_slice_end*len(X))))
                 valid_split = list(range(int(train_slice_end*len(X)), int(valid_slice_end*len(X))))
                 test_split = list(range(int(valid_slice_end*len(X)), int(len(X))))
@@ -202,7 +204,7 @@ if __name__ == "__main__":
 
                 splits = train_valid_splits
 
-                print("X:{}, y:{}, Split Sizes:{}".format(X.shape, y.shape, [len(split) for split in splits]))
+                print("X:{}, y:{}, Split Sizes:{}".format(X.shape, y.shape, [len(split) for split in all_splits]))
 
                 wandb_cb = WandbCallback()
                 cbs = [wandb_cb] 
@@ -224,9 +226,9 @@ if __name__ == "__main__":
                 model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
                 print(model.__class__.__name__)
                 reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
-                lr_max = reg.lr_find().valley
-                print("Found learning rate:", lr_max)  
-                reg.fit_one_cycle(NUM_EPOCHS, lr_max, cbs=[saveModelCallback, earlyStoppingCallback])
+                # lr_max = reg.lr_find().valley
+                # print("Found learning rate:", lr_max)  
+                reg.fit_one_cycle(NUM_EPOCHS, args.lr, cbs=[saveModelCallback, earlyStoppingCallback])
                 reg.export("reg.pkl")
 
                 raw_preds, target, preds = reg.get_X_preds(X[splits[0]], y[splits[0]])

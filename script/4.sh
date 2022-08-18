@@ -6,7 +6,7 @@ for TRAIN_START in 0 0.1 0.2 0.3 0.4 0.5
 do
     for LR in 0.1 0.01 0.001 0.0001
     do
-        for METHOD in 'resnet', 'inceptiontime'
+        for METHOD in 'lstm'
         do
             python examples/forecasting/beijing_dataset.py --method $METHOD \
             --data "data/Processed-Beijing-ERA5/train_start_${TRAIN_START}/data.csv" \
