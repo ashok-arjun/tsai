@@ -223,9 +223,13 @@ if __name__ == "__main__":
                 dsets = TSDatasets(X, y, tfms=tfms, splits=splits)
                 dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[BATCH_SIZE, BATCH_SIZE], \
                                                 num_workers=NUM_WORKERS, device='cuda:0', batch_tfms=batch_tfms)
-                model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
-                print(model.__class__.__name__)
-                reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
+                if arch == TSTPlus:
+                        reg = TSRegressor(X, y, splits=splits, path=PATH, arch=TSTPlus, arch_config=configDict, batch_tfms=batch_tfms, metrics=METRICS,  cbs=cbs, verbose=True)
+                else:
+                        model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
+                        reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
+                num_params = total_params(reg.model)
+                wandb.log({"num_params": num_params})
                 # lr_max = reg.lr_find().valley
                 # print("Found learning rate:", lr_max)  
                 reg.fit_one_cycle(NUM_EPOCHS, args.lr, cbs=[saveModelCallback, earlyStoppingCallback])

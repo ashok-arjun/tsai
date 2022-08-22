@@ -4,7 +4,7 @@ TASK="regression"
 
 for TRAIN_START in 0 0.1 0.2 0.3 0.4 0.5
 do
-    for LR in 0.1 0.01 0.001 0.0001
+    for LR in 0.1 0.01 0.001
     do
         for METHOD in 'xresnet1d18', 'xresnet1d18_deep', 'xresnet1d34', 'xresnet1d34_deep'
         do
