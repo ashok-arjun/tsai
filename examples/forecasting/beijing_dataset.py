@@ -229,6 +229,7 @@ if __name__ == "__main__":
                         model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
                         reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
                 num_params = total_params(reg.model)
+                print("Number of parameters:", num_params)
                 wandb.log({"num_params": num_params})
                 # lr_max = reg.lr_find().valley
                 # print("Found learning rate:", lr_max)  
