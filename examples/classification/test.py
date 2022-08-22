@@ -1,5 +1,6 @@
 from tsai.all import *
-# X, y, splits = get_classification_data('ArticularyWordRecognition', split_data=False)
+X, y, splits = get_classification_data('ArticularyWordRecognition', split_data=False)
+print(X.shape, y.shape)
 # batch_tfms = TSStandardize(by_sample=True)
 # mv_clf = TSClassifier(X, y, splits=splits, path='models', arch=InceptionTimePlus, batch_tfms=batch_tfms, metrics=accuracy)
 # mv_clf.fit_one_cycle(10, 1e-2)
@@ -20,10 +21,11 @@ from tsai.all import *
 # learn.fit_one_cycle(100, 1e-4)
 # """
 
-X, y, splits = get_UCR_data('FaceDetection', return_split=False)
-tfms  = [None, [Categorize()]]
-dsets = TSDatasets(X, y, tfms=tfms, splits=splits)
-dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=64, batch_tfms=TSStandardize(by_var=True))
-model = build_ts_model(InceptionTimePlus, dls=dls)
-learn = Learner(dls, model, metrics=accuracy)
-learn.fit_one_cycle(100, 1e-4)
+# X, y, splits = get_UCR_data('FaceDetection', return_split=False)
+# print(X.shape, y.shape)
+# # tfms  = [None, [Categorize()]]
+# # dsets = TSDatasets(X, y, tfms=tfms, splits=splits)
+# # dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=64, batch_tfms=TSStandardize(by_var=True))
+# # model = build_ts_model(InceptionTimePlus, dls=dls)
+# # learn = Learner(dls, model, metrics=accuracy)
+# # learn.fit_one_cycle(100, 1e-4)

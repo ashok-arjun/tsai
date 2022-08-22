@@ -125,6 +125,7 @@ if __name__ == "__main__":
         parser.add_argument('--train_slice_end', type=float, default=0.6, help='device ids of multile gpus')
         parser.add_argument('--valid_slice_end', type=float, default=0.8, help='device ids of multile gpus')
         parser.add_argument('--lr', type=float, default=0.001, help='lr')
+        parser.add_argument('--forecast_horizon', type=int, default=24, help='lr')
 
         args = parser.parse_args()
         METHOD = args.method
@@ -140,7 +141,7 @@ if __name__ == "__main__":
         if args.task in ['regression', 'forecasting']:
                 METRICS=[mse, mae]
         elif args.task == 'classification':
-                METRICS=[accuracy, RocAuc]
+                METRICS=[accuracy, RocAuc()]
 
         arch=METHOD_HYPERPARAM_MAP[METHOD]['model']
         k=METHOD_HYPERPARAM_MAP[METHOD]['arch_args']
@@ -190,10 +191,10 @@ if __name__ == "__main__":
                 ts = df.values
                 print("Shape of DF:", ts.shape)
 
-                if args.task == 'regression':
+                if args.task in ['regression', 'classification']:
                         horizon = 0
                 elif args.task == 'forecasting':
-                        horizon = 24
+                        horizon = args.forecast_horizon
                 X, y = SlidingWindow(1, get_x=list(range(15)), get_y=[15], horizon=horizon)(ts)
                 train_split = list(range(int(train_slice_start*len(X)), int(train_slice_end*len(X))))
                 valid_split = list(range(int(train_slice_end*len(X)), int(valid_slice_end*len(X))))
@@ -219,41 +220,78 @@ if __name__ == "__main__":
                         tfms  = [None, [TSRegression()]]
                 elif args.task == 'forecasting':
                         tfms  = [None, [TSForecasting()]]
+                elif args.task == 'classification':
+                        tfms = [None, [Categorize()]]
+                        loss_func = LabelSmoothingCrossEntropyFlat()
 
                 dsets = TSDatasets(X, y, tfms=tfms, splits=splits)
                 dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[BATCH_SIZE, BATCH_SIZE], \
                                                 num_workers=NUM_WORKERS, device='cuda:0', batch_tfms=batch_tfms)
-                if arch == TSTPlus:
-                        reg = TSRegressor(X, y, splits=splits, path=PATH, arch=TSTPlus, arch_config=configDict, batch_tfms=batch_tfms, metrics=METRICS,  cbs=cbs, verbose=True)
-                else:
-                        model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
-                        reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
-                num_params = total_params(reg.model)
-                print("Number of parameters:", num_params)
-                wandb.log({"num_params": num_params})
+                model = create_model(arch, dls=dls, **configDict, verbose=True, device='cuda:0')
+                reg = Learner(dls, model,  metrics=METRICS, cbs=cbs, loss_func=loss_func, path=PATH)
+
+                print("Dataloader's properties:", dls.vars, dls.c, dls.len)
+
+                # num_params = total_params(reg.model)
+                # print("Number of parameters:", num_params)
+                # wandb.log({"num_params": num_params})
                 # lr_max = reg.lr_find().valley
                 # print("Found learning rate:", lr_max)  
+                
                 reg.fit_one_cycle(NUM_EPOCHS, args.lr, cbs=[saveModelCallback, earlyStoppingCallback])
                 reg.export("reg.pkl")
 
-                raw_preds, target, preds = reg.get_X_preds(X[splits[0]], y[splits[0]])
-                train_mse = skm.mean_squared_error(target, preds, squared=True)
-                train_mae = skm.mean_absolute_error(target, preds)
+                if args.task in ['forecasting', 'regression']:
+                        _, train_targets, train_preds = reg.get_X_preds(X[splits[0]], y[splits[0]])
+                        _, valid_targets, valid_preds = reg.get_X_preds(X[splits[1]], y[splits[1]])
+                        _, test_targets, test_preds = reg.get_X_preds(X[all_splits[-1]], y[all_splits[-1]])
 
-                raw_preds, target, preds = reg.get_X_preds(X[splits[1]], y[splits[1]])
-                valid_mse = skm.mean_squared_error(target, preds, squared=True)
-                valid_mae = skm.mean_absolute_error(target, preds)
+                        print(train_targets.shape, train_preds.shape)
+                        print(valid_targets.shape, valid_preds.shape)
+                        print(test_targets.shape, test_preds.shape)
 
-                raw_preds, target, preds = reg.get_X_preds(X[all_splits[-1]], y[all_splits[-1]])
-                test_mse = skm.mean_squared_error(target, preds, squared=True)
-                test_mae = skm.mean_absolute_error(target, preds)
+                        train_mse = skm.mean_squared_error(train_targets, train_preds, squared=True)
+                        train_mae = skm.mean_absolute_error(train_targets, train_preds)
 
-                print("Train MSE:{} | MAE: {}".format(train_mse, train_mae))
-                print("Valid MSE:{} | MAE: {}".format(valid_mse, valid_mae))
-                print("Test MSE:{} | MAE: {}".format(test_mse, test_mae))
+                        valid_mse = skm.mean_squared_error(valid_targets, valid_preds, squared=True)
+                        valid_mae = skm.mean_absolute_error(valid_targets, valid_preds)
 
-                wandb.log({"final/train_mse": train_mse, "final/train_mae": train_mae})
-                wandb.log({"final/valid_mse": valid_mse, "final/valid_mae": valid_mae})
-                wandb.log({"final/test_mse": test_mse, "final/test_mae": test_mae})
+                        test_mse = skm.mean_squared_error(test_targets, test_preds, squared=True)
+                        test_mae = skm.mean_absolute_error(test_targets, test_preds)
 
+                        print("Train MSE:{} | MAE: {}".format(train_mse, train_mae))
+                        print("Valid MSE:{} | MAE: {}".format(valid_mse, valid_mae))
+                        print("Test MSE:{} | MAE: {}".format(test_mse, test_mae))
+
+                        wandb.log({"final/train_mse": train_mse, "final/train_mae": train_mae})
+                        wandb.log({"final/valid_mse": valid_mse, "final/valid_mae": valid_mae})
+                        wandb.log({"final/test_mse": test_mse, "final/test_mae": test_mae})
+                else:
+                        train_dl = dls.train
+                        _, train_targets, train_preds = reg.get_preds(dl=train_dl, with_decoded=True)
+                        train_acc = skm.accuracy_score(train_targets, train_preds)
+                        # train_rocauc = skm.roc_auc_score(train_targets, train_preds)
+                        train_rocauc = 0
+
+                        valid_dl = dls.valid
+                        _, valid_targets, valid_preds = reg.get_preds(dl=valid_dl, with_decoded=True)
+                        valid_acc = skm.accuracy_score(valid_targets, valid_preds)
+                        # valid_rocauc = skm.roc_auc_score(valid_targets, valid_preds)
+                        valid_rocauc = 0
+
+                        test_ds = valid_dl.dataset.add_test(X[test_split], y[test_split])
+                        test_dl = valid_dl.new(test_ds)
+                        _, test_targets, test_preds = reg.get_preds(dl=test_dl, with_decoded=True)
+                        test_acc = skm.accuracy_score(test_targets, test_preds)
+                        # test_rocauc = skm.roc_auc_score(test_targets, test_preds)
+                        test_rocauc = 0
+
+                        print("Train Acc:{} | ROCAUC: {}".format(train_acc, train_rocauc))
+                        print("Valid Acc:{} | ROCAUC: {}".format(valid_acc, valid_rocauc))
+                        print("Test Acc:{} | ROCAUC: {}".format(test_acc, test_rocauc))
+
+                        wandb.log({"final/train_acc": train_acc, "final/train_rocauc": train_rocauc})
+                        wandb.log({"final/valid_acc": valid_acc, "final/valid_rocauc": valid_rocauc})
+                        wandb.log({"final/test_acc": test_acc, "final/test_rocauc": test_rocauc})
+                        
                 wandb.finish()
