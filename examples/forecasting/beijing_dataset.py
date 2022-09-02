@@ -24,8 +24,8 @@ METHOD_HYPERPARAM_MAP = {
         'transformer': {'model': TransformerModel, 
                 'arch_args': {
                                 'd_model': [512],
-                                'n_head': [1, 2, 4, 8, 16],
-                                'n_layers': [1,2,3,4,5]      
+                                'n_head': [1, 4, 8],
+                                'n_layers': [1,3,5]      
                         }
                 },
         'tstplus': {'model': TSTPlus, 
@@ -39,7 +39,7 @@ METHOD_HYPERPARAM_MAP = {
         'rnn': {'model': RNN, 
                 'arch_args': {
                                 'hidden_size': [512],
-                                'n_layers': [1,2,3,4,5],
+                                'n_layers': [1,3,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5]
@@ -48,7 +48,7 @@ METHOD_HYPERPARAM_MAP = {
         'lstm': {'model': LSTM, 
                 'arch_args': {
                                 'hidden_size': [512],
-                                'n_layers': [1,2,3,4,5],
+                                'n_layers': [1,3,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5]
@@ -242,13 +242,13 @@ if __name__ == "__main__":
                 reg.export("reg.pkl")
 
                 if args.task in ['forecasting', 'regression']:
-                        _, train_targets, train_preds = reg.get_X_preds(X[splits[0]], y[splits[0]])
-                        _, valid_targets, valid_preds = reg.get_X_preds(X[splits[1]], y[splits[1]])
-                        _, test_targets, test_preds = reg.get_X_preds(X[all_splits[-1]], y[all_splits[-1]])
+                        train_raw_preds, train_targets, train_preds = reg.get_X_preds(X[splits[0]], y[splits[0]])
+                        valid_raw_preds, valid_targets, valid_preds = reg.get_X_preds(X[splits[1]], y[splits[1]])
+                        test_raw_preds, test_targets, test_preds = reg.get_X_preds(X[all_splits[-1]], y[all_splits[-1]])
 
-                        print(train_targets.shape, train_preds.shape)
-                        print(valid_targets.shape, valid_preds.shape)
-                        print(test_targets.shape, test_preds.shape)
+                        # print(train_targets.shape, train_preds.shape)
+                        # print(valid_targets.shape, valid_preds.shape)
+                        # print(test_targets.shape, test_preds.shape)
 
                         train_mse = skm.mean_squared_error(train_targets, train_preds, squared=True)
                         train_mae = skm.mean_absolute_error(train_targets, train_preds)
@@ -268,20 +268,20 @@ if __name__ == "__main__":
                         wandb.log({"final/test_mse": test_mse, "final/test_mae": test_mae})
                 else:
                         train_dl = dls.train
-                        _, train_targets, train_preds = reg.get_preds(dl=train_dl, with_decoded=True)
+                        train_raw_preds, train_targets, train_preds = reg.get_preds(dl=train_dl, with_decoded=True)
                         train_acc = skm.accuracy_score(train_targets, train_preds)
                         # train_rocauc = skm.roc_auc_score(train_targets, train_preds)
                         train_rocauc = 0
 
                         valid_dl = dls.valid
-                        _, valid_targets, valid_preds = reg.get_preds(dl=valid_dl, with_decoded=True)
+                        valid_raw_preds, valid_targets, valid_preds = reg.get_preds(dl=valid_dl, with_decoded=True)
                         valid_acc = skm.accuracy_score(valid_targets, valid_preds)
                         # valid_rocauc = skm.roc_auc_score(valid_targets, valid_preds)
                         valid_rocauc = 0
 
                         test_ds = valid_dl.dataset.add_test(X[test_split], y[test_split])
                         test_dl = valid_dl.new(test_ds)
-                        _, test_targets, test_preds = reg.get_preds(dl=test_dl, with_decoded=True)
+                        test_raw_preds, test_targets, test_preds = reg.get_preds(dl=test_dl, with_decoded=True)
                         test_acc = skm.accuracy_score(test_targets, test_preds)
                         # test_rocauc = skm.roc_auc_score(test_targets, test_preds)
                         test_rocauc = 0
