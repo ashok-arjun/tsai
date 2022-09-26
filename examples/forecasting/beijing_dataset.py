@@ -30,10 +30,11 @@ METHOD_HYPERPARAM_MAP = {
                 },
         'tstplus': {'model': TSTPlus, 
                 'arch_args': {
+                                # 'ks':
                                 'd_model': [512],
-                                'n_head': [1, 2, 4, 8, 16],
-                                'n_layers': [1,2,3,4,5],
-                                'max_seq_len': [201]      
+                                # 'n_head': [1, 2, 4, 8, 16],
+                                # 'n_layers': [1,2,3,4,5]
+                                # 'max_seq_len': [201]      
                         }
                 },
         'rnn': {'model': RNN, 
@@ -57,7 +58,7 @@ METHOD_HYPERPARAM_MAP = {
         'rnnplus': {'model': RNNPlus, 
                 'arch_args': {
                                 'hidden_size': [512],
-                                'n_layers': [1,2,3,4,5],
+                                'n_layers': [1,3,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5]
@@ -66,7 +67,7 @@ METHOD_HYPERPARAM_MAP = {
         'lstmplus': {'model': LSTMPlus, 
                 'arch_args': {
                                 'hidden_size': [512],
-                                'n_layers': [1,2,3,4,5],
+                                'n_layers': [1,3,5],
                                 'bidirectional': [True, False],
                                 # 'rnn_dropout': [0, 0.3, 0.5],
                                 # 'fc_dropout': [0, 0.3, 0.5]
@@ -105,7 +106,8 @@ METHOD_HYPERPARAM_MAP = {
         'xresnet1d18plus': {'model': xresnet1d18plus, 'arch_args': {}},
         'xresnet1d18_deepplus': {'model': xresnet1d18_deepplus, 'arch_args': {}},
         'xresnet1d34plus': {'model': xresnet1d34plus, 'arch_args': {}},
-        'xresnet1d34_deepplus': {'model': xresnet1d34_deepplus, 'arch_args': {}}
+        'xresnet1d34_deepplus': {'model': xresnet1d34_deepplus, 'arch_args': {}},
+        'xcmplus': {'model': XCMPlus, 'arch_args': {}}
 }
 
 if __name__ == "__main__":        
@@ -113,7 +115,7 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument('--method', choices=list(METHOD_HYPERPARAM_MAP.keys()))
         parser.add_argument('--data', type=str, default="data/beijing/PM2.5.csv")
-        parser.add_argument('--path', type=str, default="models")
+        parser.add_argument('--path', type=str, default="/tmp")
         parser.add_argument('--batch_size', type=int, default=32)
         parser.add_argument('--num_epochs', type=int, default=100)
         parser.add_argument('--run_name', type=str, default="")
@@ -126,6 +128,7 @@ if __name__ == "__main__":
         parser.add_argument('--valid_slice_end', type=float, default=0.8, help='device ids of multile gpus')
         parser.add_argument('--lr', type=float, default=0.001, help='lr')
         parser.add_argument('--forecast_horizon', type=int, default=24, help='lr')
+        parser.add_argument('--lookback_horizon', type=int, default=24, help='lr')
 
         args = parser.parse_args()
         METHOD = args.method
@@ -193,9 +196,11 @@ if __name__ == "__main__":
 
                 if args.task in ['regression', 'classification']:
                         horizon = 0
+                        lookback_horizon = 1
                 elif args.task == 'forecasting':
                         horizon = args.forecast_horizon
-                X, y = SlidingWindow(1, get_x=list(range(15)), get_y=[15], horizon=horizon)(ts)
+                        lookback_horizon = args.lookback_horizon
+                X, y = SlidingWindow(lookback_horizon, get_x=list(range(15)), get_y=[15], horizon=horizon)(ts)
                 train_split = list(range(int(train_slice_start*len(X)), int(train_slice_end*len(X))))
                 valid_split = list(range(int(train_slice_end*len(X)), int(valid_slice_end*len(X))))
                 test_split = list(range(int(valid_slice_end*len(X)), int(len(X))))

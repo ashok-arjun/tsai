@@ -4,7 +4,7 @@ import pandas as pd
 # import pdb; pdb.set_trace()
 # ts = get_forecasting_time_series("Weather").values
 
-df = pd.read_csv("data/beijing/PM2.5.csv")
+df = pd.read_csv("datasets/PM2.5/PM2.5_train_start_0/data.csv")
 
 train_slice_start = 0.
 train_slice_end = 0.6
@@ -27,15 +27,15 @@ print("Test: Start: {} End: {}".format(test_slice_pd.index[0], test_slice_pd.ind
 ts = train_slice_pd.values
 print("Shape of time series:", )
 
-X, y = SlidingWindow(24, get_x=list(range(12)), get_y=[12], horizon=0)(ts)
+X, y = SlidingWindow(2, get_x=list(range(15)), get_y=[15], horizon=24)(ts)
 
 print(df.shape, ts.shape, X.shape, y.shape, type(X), type(y))
 
 splits = TimeSplitter(235)(y) 
-# batch_tfms = TSStandardize()
-# fcst = TSForecaster(X, y, splits=splits, path='models', batch_tfms=batch_tfms, bs=512, arch=TSTPlus, metrics=mae, cbs=ShowGraph())
-# fcst.fit_one_cycle(50, 1e-3)
-# fcst.export("fcst.pkl")
+batch_tfms = TSStandardize()
+fcst = TSForecaster(X, y, splits=splits, path='models', batch_tfms=batch_tfms, bs=512, arch=XCMPlus, metrics=mae, cbs=ShowGraph())
+fcst.fit_one_cycle(50, 1e-3)
+fcst.export("fcst.pkl")
 
 # from tsai.inference import load_learner
 # fcst = load_learner("models/fcst.pkl", cpu=False)
